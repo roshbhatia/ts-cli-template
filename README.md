@@ -1,7 +1,7 @@
 # ts-cli-template
 
-A Nix-first template for TypeScript command-line tools built with Bun and
-Effect.
+A Nix-first template for TypeScript command-line tools. It follows OpenCode's
+Bun, Effect 4, and TypeScript Native Preview toolchain.
 
 The example keeps stdout machine-readable, models argument failures as Effect
 errors, and consumes shared terminal vocabulary from `ts-utils`.
