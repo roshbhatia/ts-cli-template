@@ -5,7 +5,7 @@
 }:
 bun2nix.mkDerivation {
   pname = "example";
-  version = "0.2.0";
+  version = "0.2.1";
   src = ./.;
   module = "src/main.ts";
 
