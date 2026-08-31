@@ -1,4 +1,5 @@
 {
+  biome,
   bun2nix,
   stdenv,
 }:
@@ -8,6 +9,7 @@ bun2nix.mkDerivation {
   src = ./.;
   module = "src/main.ts";
 
+  nativeBuildInputs = [ biome ];
   bunDeps = bun2nix.fetchBunDeps { bunNix = ./bun.nix; };
   bunInstallFlags =
     if stdenv.hostPlatform.isDarwin then
@@ -21,7 +23,9 @@ bun2nix.mkDerivation {
   doCheck = true;
   checkPhase = ''
     runHook preCheck
-    bun run check
+    biome check .
+    bun run typecheck
+    bun test
     runHook postCheck
   '';
 }
