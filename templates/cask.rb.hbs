@@ -1,0 +1,31 @@
+cask "{{binary}}" do
+  version "{{version}}"
+  sha256 "{{sha256}}"
+
+  url "https://github.com/{{sourceOwner}}/{{project}}/releases/download/v#{version}/{{binary}}-aarch64-darwin.tar.gz"
+  name "{{binary}}"
+  desc "{{description}}"
+  homepage "https://github.com/{{sourceOwner}}/{{project}}"
+
+  binary "{{binary}}"
+
+  postflight do
+    completions = {
+      "completions/{{binary}}.bash" => "#{HOMEBREW_PREFIX}/etc/bash_completion.d/{{binary}}",
+      "completions/{{binary}}.fish" => "#{HOMEBREW_PREFIX}/share/fish/vendor_completions.d/{{binary}}.fish",
+      "completions/_{{binary}}" => "#{HOMEBREW_PREFIX}/share/zsh/site-functions/_{{binary}}",
+      "completions/{{binary}}.nu" => "#{HOMEBREW_PREFIX}/share/nushell/vendor/autoload/{{binary}}.nu",
+    }
+    completions.each do |source, target|
+      FileUtils.mkdir_p(File.dirname(target))
+      FileUtils.cp(staged_path/source, target)
+    end
+  end
+
+  uninstall_postflight do
+    FileUtils.rm_f("#{HOMEBREW_PREFIX}/etc/bash_completion.d/{{binary}}")
+    FileUtils.rm_f("#{HOMEBREW_PREFIX}/share/fish/vendor_completions.d/{{binary}}.fish")
+    FileUtils.rm_f("#{HOMEBREW_PREFIX}/share/zsh/site-functions/_{{binary}}")
+    FileUtils.rm_f("#{HOMEBREW_PREFIX}/share/nushell/vendor/autoload/{{binary}}.nu")
+  end
+end

@@ -19,7 +19,12 @@
   outputs =
     inputs:
     let
-      eachSystem = inputs.nixpkgs.lib.genAttrs (import inputs.systems);
+      supportedSystems = [
+        "aarch64-darwin"
+        "aarch64-linux"
+        "x86_64-linux"
+      ];
+      eachSystem = inputs.nixpkgs.lib.genAttrs supportedSystems;
       pkgsFor = eachSystem (
         system:
         import inputs.nixpkgs {
@@ -60,9 +65,76 @@
         };
       });
 
-      checks = eachSystem (system: {
-        default = pkgsFor.${system}.callPackage ./package.nix { };
-      });
+      checks = eachSystem (
+        system:
+        let
+          pkgs = pkgsFor.${system};
+          example = pkgs.callPackage ./package.nix { };
+          fakeBun = pkgs.writeShellScriptBin "bun" "exit 0";
+        in
+        {
+          default = example;
+          repository =
+            pkgs.runCommand "ts-cli-template-repository-check"
+              {
+                nativeBuildInputs = [
+                  pkgs.actionlint
+                  pkgs.bash
+                  pkgs.bun
+                  pkgs.fish
+                  pkgs.gitMinimal
+                  pkgs.jq
+                  pkgs.nushell
+                  pkgs.perl
+                  pkgs.shellcheck
+                  pkgs.shfmt
+                  pkgs.zsh
+                ];
+              }
+              ''
+                export HOME="$TMPDIR/home"
+                mkdir -p "$HOME" "$TMPDIR/generated/completions"
+                cd ${./.}
+
+                actionlint ${./.github/workflows/ci.yml} ${./.github/workflows/release.yml}
+                shellcheck ${./hack/init-template.sh} ${./hack/verify-release-tag.sh}
+                shfmt -i 2 -ci -sr -s -d ${./hack/init-template.sh} ${./hack/verify-release-tag.sh}
+
+                ${example}/bin/example completion bash > "$TMPDIR/generated/completions/example.bash"
+                ${example}/bin/example completion fish > "$TMPDIR/generated/completions/example.fish"
+                ${example}/bin/example completion nu > "$TMPDIR/generated/completions/example.nu"
+                ${example}/bin/example completion zsh > "$TMPDIR/generated/completions/_example"
+                diff -ru ${./completions} "$TMPDIR/generated/completions"
+
+                test -f ${example}/share/bash-completion/completions/example.bash
+                test -f ${example}/share/fish/vendor_completions.d/example.fish
+                test -f ${example}/share/zsh/site-functions/_example
+                test -f ${example}/share/nushell/vendor/autoload/example.nu
+
+                bash -n ${./completions/example.bash}
+                fish -n ${./completions/example.fish}
+                nu --no-config-file --no-std-lib -c 'source ${./completions/example.nu}'
+                zsh -n ${./completions/_example}
+                GITHUB_REF_NAME=v0.3.0 ${./hack/verify-release-tag.sh}
+
+                collision_project="exam""ple-tools"
+                fixture="$TMPDIR/$collision_project"
+                cp -R ${./.}/. "$fixture"
+                chmod -R u+w "$fixture"
+                (
+                  cd "$fixture"
+                  git init --quiet
+                  git add .
+                  PATH="${fakeBun}/bin:$PATH" ./hack/init-template.sh valid-owner "$collision_project" greet
+                  test "$(jq -r .name package.json)" = "$collision_project"
+                  test "$(jq -r .project template.json)" = "$collision_project"
+                  test "$(jq -r .binary template.json)" = greet
+                  ! grep -R -q "greet""-tools" README.md flake.nix package.json template.json .github
+                )
+                touch "$out"
+              '';
+        }
+      );
 
       devShells = eachSystem (system: {
         default = pkgsFor.${system}.mkShellNoCC {
@@ -70,7 +142,15 @@
             biome
             bun
             bun2nix
+            actionlint
+            fish
+            jq
+            nushell
             ripgrep
+            shellcheck
+            shfmt
+            vhs
+            zsh
           ];
         };
       });

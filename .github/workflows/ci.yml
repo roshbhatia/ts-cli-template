@@ -11,7 +11,18 @@ permissions:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux x86_64
+            runner: ubuntu-latest
+          - name: Linux ARM64
+            runner: ubuntu-24.04-arm
+          - name: macOS ARM64
+            runner: macos-15
+    name: Check ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
       - uses: cachix/install-nix-action@v31

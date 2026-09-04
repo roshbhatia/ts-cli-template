@@ -8,14 +8,14 @@ errors, and consumes shared terminal vocabulary from `ts-utils`.
 
 ## Start a project
 
-Create a repository from this template. Then replace the package and binary
-names.
+Create a repository from this template, then run the initializer once:
 
 ```bash
-rg -l 'example|ts-cli-template' | xargs sed -i '' -e 's/example/PROJECT/g' -e 's/ts-cli-template/PROJECT/g'
-bun install
-bun run nix:lock
+./hack/init-template.sh OWNER PROJECT [BINARY]
 ```
+
+Names must start with a lowercase letter and contain only lowercase letters,
+digits, and hyphens. The binary defaults to the project name.
 
 ## Development
 
@@ -35,3 +35,21 @@ nix run . -- --json Roshan
 ```
 
 Run `bun run nix:lock` after a dependency change.
+
+## Commands
+
+<!-- generated:commands:start -->
+```text
+Print a greeting as text or JSON.
+
+Usage:
+  example [--json] [NAME]
+Commands:
+  completion <bash|fish|nu|zsh>  Print a shell completion script
+
+Options:
+  --json  Print JSON output
+  --version  Print the version
+  -h, --help  Print command help
+```
+<!-- generated:commands:end -->

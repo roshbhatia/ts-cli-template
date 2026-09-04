@@ -1,0 +1,19 @@
+#compdef example
+local context state line
+_arguments \
+  '--json[Print JSON output]' \
+  '--version[Print the version]' \
+  '{-h,--help}[Print command help]' \
+  '1:command:->command' \
+  '*::argument:->argument'
+
+case "$state" in
+  command)
+    _values 'command' 'completion[Print a shell completion script]'
+    ;;
+  argument)
+    if [[ "$line[1]" = completion ]]; then
+      _values 'shell' bash fish nu zsh
+    fi
+    ;;
+esac

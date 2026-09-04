@@ -9,30 +9,65 @@ permissions:
 
 jobs:
   build:
+    name: Build ${{ matrix.system }}
     strategy:
+      fail-fast: false
       matrix:
-        runner: [ubuntu-latest, macos-latest]
+        include:
+          - runner: ubuntu-latest
+            system: x86_64-linux
+          - runner: ubuntu-24.04-arm
+            system: aarch64-linux
+          - runner: macos-15
+            system: aarch64-darwin
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
       - uses: cachix/install-nix-action@v31
-      - run: nix build --accept-flake-config --print-build-logs
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.13
+      - run: nix develop --accept-flake-config -c ./hack/verify-release-tag.sh
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: dist/example --version
       - run: |
-          mkdir -p dist
-          cp result/bin/example "dist/example-${{ runner.os }}-${{ runner.arch }}"
+          mkdir -p release
+          cp dist/example README.md LICENSE release/
+          cp -R completions release/
+          tar -C release -czf "example-${{ matrix.system }}.tar.gz" .
       - uses: actions/upload-artifact@v7
         with:
-          name: example-${{ runner.os }}-${{ runner.arch }}
-          path: dist/*
+          name: example-${{ matrix.system }}
+          path: example-${{ matrix.system }}.tar.gz
 
   release:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
-      - run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes --repo "$GITHUB_REPOSITORY"
+      - uses: cachix/install-nix-action@v31
+      - name: Create release
+        run: gh release create "$GITHUB_REF_NAME" dist/* --generate-notes --repo "$GITHUB_REPOSITORY"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update Homebrew tap
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          sha256="$(sha256sum dist/example-aarch64-darwin.tar.gz | cut -d ' ' -f 1)"
+          nix develop --accept-flake-config -c bun install --frozen-lockfile
+          nix develop --accept-flake-config -c bun run src/render-cask.ts "$sha256" > example.rb
+          tap="repos/$(jq -r .homebrewOwner template.json)/homebrew-tap/contents/Casks/example.rb"
+          options=(
+            -f message="example $GITHUB_REF_NAME" \
+            -f content="$(base64 < example.rb | tr -d '\n')"
+          )
+          if current_sha="$(gh api "$tap" --jq .sha 2>/dev/null)"; then
+            options+=(-f sha="$current_sha")
+          fi
+          gh api --method PUT "$tap" "${options[@]}"
