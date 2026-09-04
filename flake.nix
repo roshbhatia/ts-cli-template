@@ -115,7 +115,7 @@
                 fish -n ${./completions/example.fish}
                 nu --no-config-file --no-std-lib -c 'source ${./completions/example.nu}'
                 zsh -n ${./completions/_example}
-                GITHUB_REF_NAME=v0.3.0 ${./hack/verify-release-tag.sh}
+                GITHUB_REF_NAME=v0.3.0 bash ${./hack/verify-release-tag.sh}
 
                 collision_project="exam""ple-tools"
                 fixture="$TMPDIR/$collision_project"
@@ -125,7 +125,7 @@
                   cd "$fixture"
                   git init --quiet
                   git add .
-                  PATH="${fakeBun}/bin:$PATH" ./hack/init-template.sh valid-owner "$collision_project" greet
+                  PATH="${fakeBun}/bin:$PATH" bash ./hack/init-template.sh valid-owner "$collision_project" greet
                   test "$(jq -r .name package.json)" = "$collision_project"
                   test "$(jq -r .project template.json)" = "$collision_project"
                   test "$(jq -r .binary template.json)" = greet
